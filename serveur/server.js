@@ -29,9 +29,10 @@ app.get('/', (req, res) => {
 
 // 2. Route LOGIN
 app.post('/login', async (req, res) => {
-  const { pseudo, password } = req.body;
+  const { pseudo, password } = req.body; // 'pseudo' vient de ton application mobile
   try {
-    const userRes = await pool.query("SELECT * FROM users WHERE pseudo = $1", [pseudo]);
+    // ⚠️ On cherche dans la colonne 'username' (le nom dans ta base)
+    const userRes = await pool.query("SELECT * FROM users WHERE username = $1", [pseudo]);
     const user = userRes.rows[0];
 
     if (user) {
@@ -41,13 +42,15 @@ app.post('/login', async (req, res) => {
         res.status(401).json({ error: "Mot de passe incorrect" });
       }
     } else {
+      // ⚠️ On insère dans 'username'
       const newUser = await pool.query(
-        "INSERT INTO users (pseudo, password) VALUES ($1, $2) RETURNING *",
+        "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
         [pseudo, password]
       );
       res.json(newUser.rows[0]);
     }
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
