@@ -8,7 +8,7 @@ app.use(express.json());
 
 // --- CONNEXION SUPABASE ---
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Sambal01$20242025@db.vhbpufbtrcihugwtfipn.supabase.co:5432/postgres',
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Sambal01$20242025@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
   ssl: {
     rejectUnauthorized: false
   }
