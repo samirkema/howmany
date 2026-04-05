@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { Pool } = require('pg'); // On utilise uniquement pg maintenant
+const { Pool } = require('pg');
 
 const app = express();
 app.use(cors());
@@ -8,28 +8,26 @@ app.use(express.json());
 
 // --- CONNEXION SUPABASE ---
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Sambal01$20242025@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Sambal01$20242025@db.vhbpufbtrcihugwtfipn.supabase.co:5432/postgres',
   ssl: {
     rejectUnauthorized: false
   }
 });
 
-// Test de connexion immédiat
-  connectionString: process.env.DATABASE_URL || 'TA_CHAINE_DE_CONNEXION_AVEC_MOT_DE_PASSE',
-  ssl: {
-    // Cette ligne autorise les certificats auto-signés
-    rejectUnauthorized: false 
-  }
+// Test de connexion
+pool.connect((err) => {
+  if (err) console.error("❌ Erreur de connexion Supabase:", err.stack);
+  else console.log("✅ Connecté à Supabase (PostgreSQL)");
 });
 
 // --- ROUTES ---
 
 // 1. Route de TEST
 app.get('/', (req, res) => {
-  res.send("Le serveur Genius Venture est en ligne sur Supabase !");
+  res.send("Le serveur Genius Venture est en ligne !");
 });
 
-// 2. Route LOGIN (Adaptée PostgreSQL)
+// 2. Route LOGIN
 app.post('/login', async (req, res) => {
   const { pseudo, password } = req.body;
   try {
@@ -38,22 +36,18 @@ app.post('/login', async (req, res) => {
 
     if (user) {
       if (user.password === password) {
-        console.log(`✅ Connexion réussie : ${pseudo}`);
         res.json(user);
       } else {
         res.status(401).json({ error: "Mot de passe incorrect" });
       }
     } else {
-      // Création automatique si n'existe pas
       const newUser = await pool.query(
         "INSERT INTO users (pseudo, password) VALUES ($1, $2) RETURNING *",
         [pseudo, password]
       );
-      console.log(`🆕 Nouvel utilisateur créé : ${pseudo}`);
       res.json(newUser.rows[0]);
     }
   } catch (err) {
-    console.error(err.message);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
@@ -65,7 +59,6 @@ app.get('/experiences', async (req, res) => {
     FROM experiences 
     LEFT JOIN users ON experiences.user_id = users.id 
     ORDER BY experiences.id DESC`;
-    
   try {
     const result = await pool.query(sql);
     const cleanData = result.rows.map(row => ({
@@ -84,7 +77,6 @@ app.get('/experiences', async (req, res) => {
 app.post('/experience', async (req, res) => {
   const { user_id, category, title, universal_score, technical_ratings } = req.body;
   const sql = `INSERT INTO experiences (user_id, category, title, universal_score, technical_ratings) VALUES ($1, $2, $3, $4, $5) RETURNING id`;
-  
   try {
     const result = await pool.query(sql, [user_id, category, title, universal_score, JSON.stringify(technical_ratings)]);
     res.json({ id: result.rows[0].id });
@@ -104,8 +96,7 @@ app.delete('/experience/:id', async (req, res) => {
   }
 });
 
-// Port dynamique pour Render
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Serveur prêt sur le port ${PORT}`);
 });
