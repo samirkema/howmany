@@ -27,12 +27,12 @@ app.get('/', (req, res) => {
   res.send("Le serveur Genius Venture est en ligne !");
 });
 
-// 2. Route LOGIN
+// 2. Route LOGIN (CORRIGÉE : On utilise 'pseudo' et non 'username')
 app.post('/login', async (req, res) => {
-  const { pseudo, password } = req.body; // 'pseudo' vient de ton application mobile
+  const { pseudo, password } = req.body;
   try {
-    // ⚠️ On cherche dans la colonne 'username' (le nom dans ta base)
-    const userRes = await pool.query("SELECT * FROM users WHERE username = $1", [pseudo]);
+    // ⚠️ Correction ici : on cherche "pseudo"
+    const userRes = await pool.query("SELECT * FROM users WHERE pseudo = $1", [pseudo]);
     const user = userRes.rows[0];
 
     if (user) {
@@ -42,15 +42,15 @@ app.post('/login', async (req, res) => {
         res.status(401).json({ error: "Mot de passe incorrect" });
       }
     } else {
-      // ⚠️ On insère dans 'username'
+      // ⚠️ Correction ici : on insère dans "pseudo"
       const newUser = await pool.query(
-        "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
+        "INSERT INTO users (pseudo, password) VALUES ($1, $2) RETURNING *",
         [pseudo, password]
       );
       res.json(newUser.rows[0]);
     }
   } catch (err) {
-    console.error(err);
+    console.error("Erreur login:", err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
@@ -72,6 +72,7 @@ app.get('/experiences', async (req, res) => {
     }));
     res.json(cleanData);
   } catch (err) {
+    console.error("Erreur recup:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -100,6 +101,6 @@ app.delete('/experience/:id', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur prêt sur le port ${PORT}`);
 });
