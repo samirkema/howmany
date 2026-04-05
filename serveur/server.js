@@ -15,9 +15,12 @@ const pool = new Pool({
 });
 
 // Test de connexion immédiat
-pool.connect((err) => {
-  if (err) console.error("❌ Erreur de connexion Supabase:", err.stack);
-  else console.log("✅ Connecté à Supabase (PostgreSQL)");
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'TA_CHAINE_DE_CONNEXION_AVEC_MOT_DE_PASSE',
+  ssl: {
+    // Cette ligne autorise les certificats auto-signés
+    rejectUnauthorized: false 
+  }
 });
 
 // --- ROUTES ---
