@@ -7,9 +7,13 @@ app.use(cors());
 app.use(express.json());
 
 // Connexion à la base de données
-const db = new sqlite3.Database('./database.sqlite', (err) => {
-  if (err) console.error("Erreur de connexion :", err.message);
-  else console.log("Connecté à la base de données SQLite.");
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Sambal01$20242025@db.vhbpufbtrcihugwtfipn.supabase.co:5432/postgres',
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // --- PARTIE INITIALISATION (CRUCIALE) ---
