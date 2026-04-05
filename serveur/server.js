@@ -15,7 +15,6 @@ const pool = new Pool({
 });
 
 // Test de connexion immédiat
-const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'TA_CHAINE_DE_CONNEXION_AVEC_MOT_DE_PASSE',
   ssl: {
     // Cette ligne autorise les certificats auto-signés
