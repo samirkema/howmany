@@ -10,17 +10,22 @@ app.use(express.json());
 
 const saltRounds = 10;
 
-// --- CONNEXION SUPABASE ---
+// --- CONNEXION SUPABASE SÉCURISÉE ---
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Sambal01$20242025@db.vhbpufbtrcihugwtfipn.supabase.co:5432/postgres',
+  // On utilise UNIQUEMENT la variable d'environnement
+  connectionString: process.env.DATABASE_URL, 
   ssl: {
     rejectUnauthorized: false
   }
 });
 
+// Test de connexion pour confirmer que Render a bien transmis la clé
 pool.connect((err) => {
-  if (err) console.error("❌ Erreur de connexion Supabase:", err.stack);
-  else console.log("✅ Connecté à Supabase (PostgreSQL)");
+  if (err) {
+    console.error("❌ Erreur : DATABASE_URL est introuvable ou incorrecte sur Render.", err.message);
+  } else {
+    console.log("✅ Connexion réussie via Variable d'Environnement");
+  }
 });
 
 // ==========================================
@@ -118,25 +123,57 @@ app.get('/experiences', verifyToken, async (req, res) => {
 // 4. Route PUBLIER (Protégée)
 app.post('/experience', verifyToken, async (req, res) => {
   const { category, title, universal_score, technical_ratings } = req.body;
-  // Utilisation de req.userId provenant du token plutôt que user_id envoyé par le body
-  const sql = `INSERT INTO experiences (user_id, category, title, universal_score, technical_ratings) VALUES ($1, $2, $3, $4, $5) RETURNING id`;
+  const client = await pool.connect();
+  
   try {
-    const result = await pool.query(sql, [req.userId, category, title, universal_score, JSON.stringify(technical_ratings)]);
+    await client.query("BEGIN");
+
+    // 1. On récupère le pseudo pour le RLS
+    const userRes = await client.query("SELECT pseudo FROM users WHERE id = $1", [req.userId]);
+    const userPseudo = userRes.rows[0].pseudo;
+    await client.query(`SET LOCAL app.current_user_pseudo = '${userPseudo}'`);
+
+    // 2. Insertion
+    const sql = `INSERT INTO experiences (user_id, category, title, universal_score, technical_ratings) VALUES ($1, $2, $3, $4, $5) RETURNING id`;
+    const result = await client.query(sql, [req.userId, category, title, universal_score, JSON.stringify(technical_ratings)]);
+    
+    await client.query("COMMIT");
     res.json({ id: result.rows[0].id });
   } catch (err) {
+    await client.query("ROLLBACK");
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
-// 5. Route SUPPRIMER (Protégée)
+
+// 5. Route SUPPRIMER (Protégée et synchronisée avec le RLS)
 app.delete('/experience/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
+  const client = await pool.connect(); // On utilise un client pour garder la session locale
+  
   try {
-    // Optionnel : vérifier ici si req.userId est bien le propriétaire de l'experience id
-    await pool.query("DELETE FROM experiences WHERE id = $1", [id]);
+    await client.query("BEGIN"); // On ouvre une transaction
+
+    // 1. Récupérer le pseudo via l'ID du Token
+    const userRes = await client.query("SELECT pseudo FROM users WHERE id = $1", [req.userId]);
+    const userPseudo = userRes.rows[0].pseudo;
+
+    // 2. Transmettre le pseudo à la session Supabase pour débloquer le RLS
+    await client.query(`SET LOCAL app.current_user_pseudo = '${userPseudo}'`);
+
+    // 3. Exécuter la suppression
+    const deleteRes = await client.query("DELETE FROM experiences WHERE id = $1", [id]);
+    
+    await client.query("COMMIT");
     res.json({ message: "Supprimé avec succès" });
   } catch (err) {
-    res.status(500).json({ error: "Erreur lors de la suppression" });
+    await client.query("ROLLBACK");
+    console.error("Erreur RLS suppression:", err);
+    res.status(403).json({ error: "Interdit ou erreur de sécurité" });
+  } finally {
+    client.release();
   }
 });
 
