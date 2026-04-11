@@ -23,35 +23,41 @@ pool.connect((err) => {
 // --- ROUTES ---
 
 // 1. Route de TEST
-app.get('/', (req, res) => {
-  res.send("Le serveur Genius Venture est en ligne !");
-});
+const bcrypt = require('bcrypt'); // 1. Importer bcrypt
+const saltRounds = 10; // Puissance du hachage
 
-// 2. Route LOGIN (CORRIGÉE : On utilise 'pseudo' et non 'username')
 app.post('/login', async (req, res) => {
   const { pseudo, password } = req.body;
+
   try {
-    // ⚠️ Correction ici : on cherche "pseudo"
+    // 2. Chercher l'utilisateur par son pseudo
     const userRes = await pool.query("SELECT * FROM users WHERE pseudo = $1", [pseudo]);
     const user = userRes.rows[0];
 
     if (user) {
-      if (user.password === password) {
-        res.json(user);
+      // --- CAS : L'UTILISATEUR EXISTE ---
+      // 3. On compare le mot de passe tapé avec le HASH stocké en base
+      const match = await bcrypt.compare(password, user.password);
+
+      if (match) {
+        res.json(user); // Succès
       } else {
         res.status(401).json({ error: "Mot de passe incorrect" });
       }
     } else {
-      // ⚠️ Correction ici : on insère dans "pseudo"
+      // --- CAS : NOUVEL UTILISATEUR ---
+      // 4. On HACHE le mot de passe avant de l'enregistrer
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
       const newUser = await pool.query(
         "INSERT INTO users (pseudo, password) VALUES ($1, $2) RETURNING *",
-        [pseudo, password]
+        [pseudo, hashedPassword] // On stocke hashedPassword, PAS password !
       );
       res.json(newUser.rows[0]);
     }
   } catch (err) {
-    console.error("Erreur login:", err);
-    res.status(500).json({ error: "Erreur serveur" });
+    console.error(err);
+    res.status(500).json({ error: "Erreur lors de l'authentification" });
   }
 });
 
