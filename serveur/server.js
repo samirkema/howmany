@@ -9,7 +9,11 @@ app.use(express.json());
 
 // ─── CONNEXION SUPABASE ────────────────────────────────────────────────────
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: 'aws-0-eu-west-1.pooler.supabase.com',
+  port: 6543,
+  database: 'postgres',
+  user: 'postgres.vhbpufbtrcihugwtfipn',
+  password: process.env.DB_PASSWORD,
   ssl: { rejectUnauthorized: false }
 });
 
