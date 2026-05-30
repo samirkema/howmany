@@ -506,6 +506,7 @@ export default function HomeScreen() {
           source={require('../../assets/images/login-bg-2.jpg')}
           style={styles.loginBg}
           resizeMode="cover"
+          imageStyle={{ top: 0 }}
         >
           <View style={styles.loginOverlay}>
             <View style={styles.loginCard}>
@@ -716,9 +717,9 @@ const styles = StyleSheet.create({
   // Login
   loginWrapper: { flex: 1, ...(Platform.OS === 'web' ? { height: '100vh' as any } : {}) },
   loginBg: { flex: 1, width: '100%', ...(Platform.OS === 'web' ? { minHeight: '100vh' as any } : {}) },
-  loginOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  loginOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'center', alignItems: 'center', padding: 24, paddingBottom: 60 },
   loginCard: { width: '100%', maxWidth: 420 },
-  loginTitle: { fontSize: 54, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 48, letterSpacing: -1 },
+  loginTitle: { fontSize: 44, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 48, letterSpacing: -1 },
   loginForm: { gap: 14 },
   loginInput: { backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16, fontSize: 16, color: '#111' },
   loginError: { color: '#FF6B6B', fontSize: 14, fontWeight: '600', textAlign: 'center' },
