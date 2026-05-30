@@ -38,7 +38,7 @@ const ALL_CATEGORIES = Object.keys(CRITERIA);
 
 // ─── COMPOSANT PRINCIPAL ───────────────────────────────────────────────────
 export default function HomeScreen() {
-  const API_URL = 'http://192.168.1.159:3000';
+  const API_URL = 'http://192.168.1.194:3000';
 
   // Auth
   const [currentUser, setCurrentUser] = useState<any>(null);
