@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 
 const app = express();
@@ -64,15 +65,21 @@ app.post('/login', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM users WHERE pseudo = $1', [pseudo]);
     if (rows.length > 0) {
-      if (rows[0].password === password) {
-        res.json(rows[0]);
+      const user = rows[0];
+      const isHashed = user.password.startsWith('$2b$') || user.password.startsWith('$2a$');
+      const match = isHashed
+        ? await bcrypt.compare(password, user.password)
+        : user.password === password;
+      if (match) {
+        res.json(user);
       } else {
         res.status(401).json({ error: 'Mot de passe incorrect' });
       }
     } else {
+      const hashed = await bcrypt.hash(password, 10);
       const result = await pool.query(
         'INSERT INTO users (pseudo, password) VALUES ($1, $2) RETURNING *',
-        [pseudo, password]
+        [pseudo, hashed]
       );
       res.json(result.rows[0]);
     }
