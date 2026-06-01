@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   Alert, FlatList, RefreshControl, KeyboardAvoidingView, Platform,
-  ImageBackground, StatusBar, ScrollView, Modal
+  ImageBackground, StatusBar, ScrollView, Modal, Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 // ─── CATÉGORIES (issues du fichier HOW MANY CATÉGORIES.xlsx) ───────────────
 const CRITERIA: Record<string, string[]> = {
@@ -175,6 +176,34 @@ export default function HomeScreen() {
       });
       fetchFriendsList();
     } catch {}
+  };
+
+  // ── Changer la photo de profil ──
+  const handleChangeAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission refusée', 'Autorise l\'accès à ta galerie dans les réglages.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (result.canceled || !result.assets[0].base64) return;
+    const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+    try {
+      await fetch(`${API_URL}/user/${currentUser.id}/avatar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_url: base64 }),
+      });
+      setCurrentUser((u: any) => ({ ...u, avatar_url: base64 }));
+    } catch {
+      Alert.alert('Erreur', 'Impossible de mettre à jour la photo.');
+    }
   };
 
   // ── Profil d'un autre utilisateur ──
@@ -361,9 +390,18 @@ export default function HomeScreen() {
     return (
       <ScrollView style={styles.profileContainer}>
         <View style={styles.profileCard}>
-          <View style={styles.avatarLarge}>
-            <Text style={styles.avatarText}>{currentUser.pseudo[0].toUpperCase()}</Text>
-          </View>
+          <TouchableOpacity onPress={handleChangeAvatar} style={styles.avatarWrapper}>
+            {currentUser.avatar_url ? (
+              <Image source={{ uri: currentUser.avatar_url }} style={styles.avatarLargeImg} />
+            ) : (
+              <View style={styles.avatarLarge}>
+                <Text style={styles.avatarText}>{currentUser.pseudo[0].toUpperCase()}</Text>
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              <Text style={styles.avatarEditIcon}>✏️</Text>
+            </View>
+          </TouchableOpacity>
           <Text style={styles.profileName}>{currentUser.pseudo}</Text>
           <Text style={styles.profileStats}>{myExps.length} expériences partagées</Text>
         </View>
@@ -423,9 +461,13 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <View style={styles.friendRow}>
             <TouchableOpacity style={styles.friendInfo} onPress={() => openUserProfile(item.id)}>
-              <View style={styles.friendAvatar}>
-                <Text style={styles.friendAvatarTxt}>{item.pseudo[0].toUpperCase()}</Text>
-              </View>
+              {item.avatar_url ? (
+                <Image source={{ uri: item.avatar_url }} style={styles.friendAvatarImg} />
+              ) : (
+                <View style={styles.friendAvatar}>
+                  <Text style={styles.friendAvatarTxt}>{item.pseudo[0].toUpperCase()}</Text>
+                </View>
+              )}
               <View>
                 <Text style={styles.friendName}>{item.pseudo}</Text>
                 <Text style={styles.friendSub}>{item.experience_count} expériences</Text>
@@ -480,9 +522,13 @@ export default function HomeScreen() {
         </View>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
           <View style={styles.profileCard}>
-            <View style={styles.avatarLarge}>
-              <Text style={styles.avatarText}>{pseudo[0].toUpperCase()}</Text>
-            </View>
+            {viewedUser.avatar_url ? (
+              <Image source={{ uri: viewedUser.avatar_url }} style={styles.avatarLargeImg} />
+            ) : (
+              <View style={styles.avatarLarge}>
+                <Text style={styles.avatarText}>{pseudo[0].toUpperCase()}</Text>
+              </View>
+            )}
             <Text style={styles.profileName}>{pseudo}</Text>
             <Text style={styles.profileStats}>{experience_count} expériences partagées</Text>
             <FriendButton />
@@ -661,8 +707,17 @@ const styles = StyleSheet.create({
   // Profil personnel
   profileContainer: { flex: 1 },
   profileCard: { alignItems: 'center', backgroundColor: '#fff', padding: 25, borderRadius: 25, margin: 16, elevation: 4 },
-  avatarLarge: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  avatarWrapper: { position: 'relative', marginBottom: 10 },
+  avatarLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center' },
+  avatarLargeImg: { width: 80, height: 80, borderRadius: 40 },
   avatarText: { color: '#fff', fontSize: 30, fontWeight: 'bold' },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#eee', elevation: 2,
+  },
+  avatarEditIcon: { fontSize: 13 },
   profileName: { fontSize: 22, fontWeight: 'bold' },
   profileStats: { color: '#666', marginTop: 4 },
   sectionTitle: { fontSize: 17, fontWeight: '800', marginVertical: 12, marginHorizontal: 16 },
@@ -686,6 +741,7 @@ const styles = StyleSheet.create({
   friendRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, elevation: 2 },
   friendInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   friendAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center' },
+  friendAvatarImg: { width: 42, height: 42, borderRadius: 21 },
   friendAvatarTxt: { color: '#fff', fontWeight: '800', fontSize: 17 },
   friendName: { fontSize: 16, fontWeight: '700' },
   friendSub: { fontSize: 12, color: '#aaa', marginTop: 2 },

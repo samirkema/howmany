@@ -50,6 +50,10 @@ async function initDB() {
     )
   `);
 
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT
+  `);
+
   console.log('✅ Tables prêtes');
 }
 
@@ -159,7 +163,7 @@ app.get('/user/:id/profile', async (req, res) => {
   const { id } = req.params;
   const { viewer_id } = req.query;
   try {
-    const userRes = await pool.query('SELECT id, pseudo FROM users WHERE id = $1', [id]);
+    const userRes = await pool.query('SELECT id, pseudo, avatar_url FROM users WHERE id = $1', [id]);
     if (userRes.rows.length === 0) return res.status(404).json({ error: 'Introuvable' });
     const user = userRes.rows[0];
 
@@ -254,7 +258,7 @@ app.get('/user/:id/friends', async (req, res) => {
     return res.status(403).json({ error: 'Accès refusé' });
   try {
     const { rows } = await pool.query(`
-      SELECT u.id, u.pseudo,
+      SELECT u.id, u.pseudo, u.avatar_url,
         (SELECT COUNT(*) FROM experiences WHERE user_id = u.id) as experience_count
       FROM users u
       INNER JOIN friendships f ON (
@@ -280,6 +284,17 @@ app.get('/user/:id/friend-requests', async (req, res) => {
       ORDER BY f.created_at DESC
     `, [req.params.id]);
     res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// METTRE À JOUR AVATAR
+app.put('/user/:id/avatar', async (req, res) => {
+  const { avatar_url } = req.body;
+  try {
+    await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatar_url, req.params.id]);
+    res.json({ message: 'Avatar mis à jour' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
