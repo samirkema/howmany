@@ -552,6 +552,7 @@ export default function HomeScreen() {
           source={require('../../assets/images/login-bg-2.jpg')}
           style={styles.loginBg}
           resizeMode="cover"
+          imageStyle={Platform.OS !== 'web' ? { top: 0 } : undefined}
         >
           <View style={styles.loginOverlay}>
             <View style={styles.loginCard}>
