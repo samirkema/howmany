@@ -771,8 +771,8 @@ const styles = StyleSheet.create({
   modalCatLabelActive: { color: '#007AFF' },
 
   // Login
-  loginWrapper: { flex: 1, ...(Platform.OS === 'web' ? { height: '100vh' as any } : {}) },
-  loginBg: { flex: 1, width: '100%', ...(Platform.OS === 'web' ? { minHeight: '100vh' as any } : {}) },
+  loginWrapper: { flex: 1, ...(Platform.OS === 'web' ? { height: '100vh' as any, overflow: 'hidden' as any } : {}) },
+  loginBg: { flex: 1, width: '100%', ...(Platform.OS === 'web' ? { height: '100vh' as any, minHeight: '100vh' as any } : {}) },
   loginOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'center', alignItems: 'center', padding: 24, paddingBottom: 60 },
   loginCard: { width: '100%', maxWidth: 420 },
   loginTitle: { fontSize: 44, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 48, letterSpacing: -1 },
