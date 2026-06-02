@@ -396,6 +396,8 @@ export default function HomeScreen() {
   const renderForm = () => (
     <View style={styles.formContainer}>
       <Text style={styles.welcomeText}>Salut, {currentUser.pseudo} 👋</Text>
+      <Text style={styles.formSectionLabel}>✏️ Publier une note</Text>
+      <View style={styles.formCard}>
 
       {/* Sélection catégorie : top 3 + Plus */}
       <View style={styles.categoryRow}>
@@ -482,6 +484,7 @@ export default function HomeScreen() {
       <TouchableOpacity style={styles.postBtn} onPress={handleSubmit}>
         <Text style={styles.postBtnText}>Publier la note</Text>
       </TouchableOpacity>
+      </View>
       <Text style={styles.feedTitle}>Dernières expériences</Text>
     </View>
   );
@@ -765,7 +768,16 @@ const styles = StyleSheet.create({
   backBtn: { color: '#007AFF', fontWeight: '600', fontSize: 16 },
 
   // Formulaire
-  formContainer: { padding: 20, backgroundColor: '#fff', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 5 },
+  formContainer: { padding: 20, paddingBottom: 10, backgroundColor: '#fff', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 5 },
+  formSectionLabel: { fontSize: 13, fontWeight: '800', color: '#007AFF', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
+  formCard: {
+    backgroundColor: '#F0F4FF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#D6E4FF',
+    marginBottom: 4,
+  },
   welcomeText: { fontSize: 18, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
   categoryRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15, gap: 8 },
   catBtn: {
