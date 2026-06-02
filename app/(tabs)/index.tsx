@@ -459,7 +459,7 @@ export default function HomeScreen() {
         {postPhotos.length < 4 && (
           <TouchableOpacity style={styles.photoAddBtn} onPress={handleAddPostPhoto}>
             <Text style={styles.photoAddIcon}>📷</Text>
-            <Text style={styles.photoAddTxt}>{postPhotos.length === 0 ? 'Photos' : '+'}</Text>
+            <Text style={styles.photoAddTxt}>{postPhotos.length === 0 ? 'Ajouter' : '+'}</Text>
           </TouchableOpacity>
         )}
       </View>
