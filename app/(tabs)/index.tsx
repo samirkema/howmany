@@ -289,15 +289,19 @@ export default function HomeScreen() {
     } catch { Alert.alert('Erreur', 'Impossible de publier.'); }
   };
 
-  const handleDelete = (id: number) => {
-    Alert.alert('Supprimer', 'Effacer cette note ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => {
-        await fetch(`${API_URL}/experience/${id}`, { method: 'DELETE' });
-        fetchExperiences();
-        fetchMyExps(currentUser.id);
-      }},
-    ]);
+  const handleDelete = async (id: number) => {
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm('Effacer cette note ?')
+      : await new Promise<boolean>(resolve =>
+          Alert.alert('Supprimer', 'Effacer cette note ?', [
+            { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Supprimer', style: 'destructive', onPress: () => resolve(true) },
+          ])
+        );
+    if (!confirmed) return;
+    await fetch(`${API_URL}/experience/${id}`, { method: 'DELETE' });
+    fetchExperiences();
+    fetchMyExps(currentUser.id);
   };
 
   // ── Catégories affichées dans le formulaire (top 3 + Plus) ──
