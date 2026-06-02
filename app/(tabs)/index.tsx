@@ -63,6 +63,7 @@ export default function HomeScreen() {
   const [feed, setFeed]                 = useState<any[]>([]);
   const [friendsFeed, setFriendsFeed]   = useState<any[]>([]);
   const [refreshing, setRefreshing]     = useState(false);
+  const [myExps, setMyExps]             = useState<any[]>([]);
 
   // Top 3 catégories
   const [topCats, setTopCats]           = useState<string[]>([]);
@@ -92,6 +93,7 @@ export default function HomeScreen() {
       if (res.ok) {
         setCurrentUser(data);
         fetchExperiences();
+        fetchMyExps(data.id);
         fetchTopCats(data.id);
         fetchFriendRequests(data.id);
       } else {
@@ -110,6 +112,13 @@ export default function HomeScreen() {
       setFeed(await res.json());
     } catch {}
     finally { setRefreshing(false); }
+  };
+
+  const fetchMyExps = async (userId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/user/${userId}/experiences?viewer_id=${userId}`);
+      setMyExps(await res.json());
+    } catch {}
   };
 
   const fetchFriendsFeed = async () => {
@@ -250,6 +259,7 @@ export default function HomeScreen() {
       });
       // Mettre à jour localement
       setFeed(prev => prev.map(e => e.id === expId ? { ...e, visibility: newVis } : e));
+      setMyExps(prev => prev.map(e => e.id === expId ? { ...e, visibility: newVis } : e));
     } catch { Alert.alert('Erreur', 'Impossible de changer la visibilité.'); }
   };
 
@@ -273,6 +283,7 @@ export default function HomeScreen() {
         setTitle(''); setUniversalScore(0); setTechnicalScores({});
         setPostPhotos([]); setPostVisibility('public');
         fetchExperiences();
+        fetchMyExps(currentUser.id);
         fetchTopCats(currentUser.id);
       }
     } catch { Alert.alert('Erreur', 'Impossible de publier.'); }
@@ -284,6 +295,7 @@ export default function HomeScreen() {
       { text: 'Supprimer', style: 'destructive', onPress: async () => {
         await fetch(`${API_URL}/experience/${id}`, { method: 'DELETE' });
         fetchExperiences();
+        fetchMyExps(currentUser.id);
       }},
     ]);
   };
@@ -491,7 +503,6 @@ export default function HomeScreen() {
 
   // ── Vue profil personnel ──
   const renderProfile = () => {
-    const myExps = feed.filter(i => i.user_id === currentUser.id);
     return (
       <ScrollView style={styles.profileContainer}>
         <View style={styles.profileCard}>
@@ -706,7 +717,7 @@ export default function HomeScreen() {
         <TouchableOpacity onPress={() => { setView('feedAmis'); fetchFriendsFeed(); }}>
           <Text style={[styles.headerNav, view === 'feedAmis' && styles.headerActive]}>Amis</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => { setView('profile'); fetchFriendRequests(currentUser.id); }}>
+        <TouchableOpacity onPress={() => { setView('profile'); fetchFriendRequests(currentUser.id); fetchMyExps(currentUser.id); }}>
           <Text style={[styles.headerNav, view === 'profile' && styles.headerActive]}>
             Mon Profil{friendRequests.length > 0 ? ` (${friendRequests.length})` : ''}
           </Text>
