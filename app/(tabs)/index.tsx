@@ -327,7 +327,11 @@ export default function HomeScreen() {
             <Text style={styles.cardAuthor}>Par {item.pseudo || 'Anonyme'}</Text>
           </View>
           {showDelete && item.user_id === currentUser?.id && (
-            <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteBtn}>
+            <TouchableOpacity
+              onPress={(e) => { e.stopPropagation?.(); handleDelete(item.id); }}
+              style={styles.deleteBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Text style={styles.deleteBtnText}>🗑️</Text>
             </TouchableOpacity>
           )}
