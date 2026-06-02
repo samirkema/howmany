@@ -59,6 +59,9 @@ export default function HomeScreen() {
   const [postPhotos, setPostPhotos]     = useState<string[]>([]);
   const [postVisibility, setPostVisibility] = useState<'public'|'friends'|'private'>('public');
 
+  // Confirm delete modal
+  const [deleteConfirm, setDeleteConfirm] = useState<number|null>(null);
+
   // Feed
   const [feed, setFeed]                 = useState<any[]>([]);
   const [friendsFeed, setFriendsFeed]   = useState<any[]>([]);
@@ -289,17 +292,12 @@ export default function HomeScreen() {
     } catch { Alert.alert('Erreur', 'Impossible de publier.'); }
   };
 
-  const handleDelete = async (id: number) => {
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm('Effacer cette note ?')
-      : await new Promise<boolean>(resolve =>
-          Alert.alert('Supprimer', 'Effacer cette note ?', [
-            { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Supprimer', style: 'destructive', onPress: () => resolve(true) },
-          ])
-        );
-    if (!confirmed) return;
-    await fetch(`${API_URL}/experience/${id}`, { method: 'DELETE' });
+  const handleDelete = (id: number) => setDeleteConfirm(id);
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    await fetch(`${API_URL}/experience/${deleteConfirm}`, { method: 'DELETE' });
+    setDeleteConfirm(null);
     fetchExperiences();
     fetchMyExps(currentUser.id);
   };
@@ -718,6 +716,24 @@ export default function HomeScreen() {
   // ── ÉCRAN PRINCIPAL ──
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      {/* Modal confirmation suppression */}
+      <Modal visible={deleteConfirm !== null} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmTitle}>Supprimer cette note ?</Text>
+            <Text style={styles.confirmSub}>Cette action est irréversible.</Text>
+            <View style={styles.confirmBtns}>
+              <TouchableOpacity style={styles.confirmCancel} onPress={() => setDeleteConfirm(null)}>
+                <Text style={styles.confirmCancelTxt}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmDelete} onPress={confirmDelete}>
+                <Text style={styles.confirmDeleteTxt}>Supprimer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <CatModal />
 
       {/* HEADER */}
@@ -941,6 +957,17 @@ const styles = StyleSheet.create({
   modalCatEmoji: { fontSize: 28, marginBottom: 6 },
   modalCatLabel: { fontSize: 12, fontWeight: '700', color: '#555', textAlign: 'center' },
   modalCatLabelActive: { color: '#007AFF' },
+
+  // Confirm delete modal
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  confirmBox: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: 300, alignItems: 'center' },
+  confirmTitle: { fontSize: 18, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  confirmSub: { fontSize: 14, color: '#888', marginBottom: 20, textAlign: 'center' },
+  confirmBtns: { flexDirection: 'row', gap: 12 },
+  confirmCancel: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#f0f0f5', alignItems: 'center' },
+  confirmCancelTxt: { fontWeight: '700', color: '#555' },
+  confirmDelete: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#FF3B30', alignItems: 'center' },
+  confirmDeleteTxt: { fontWeight: '700', color: '#fff' },
 
   // Login
   loginWrapper: { flex: 1, ...(Platform.OS === 'web' ? { height: '100vh' as any, overflow: 'hidden' as any } : {}) },
