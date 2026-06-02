@@ -54,6 +54,14 @@ async function initDB() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT
   `);
 
+  await pool.query(`
+    ALTER TABLE experiences ADD COLUMN IF NOT EXISTS photos TEXT
+  `);
+
+  await pool.query(`
+    ALTER TABLE experiences ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public'
+  `);
+
   console.log('✅ Tables prêtes');
 }
 
@@ -92,42 +100,44 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// FEED GLOBAL
+// FEED GLOBAL (public uniquement)
 app.get('/experiences', async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT e.*, u.pseudo FROM experiences e
+      SELECT e.*, u.pseudo, u.avatar_url FROM experiences e
       LEFT JOIN users u ON e.user_id = u.id
+      WHERE e.visibility = 'public'
       ORDER BY e.id DESC
     `);
     res.json(rows.map(r => ({
       ...r,
-      technical_ratings: typeof r.technical_ratings === 'string'
-        ? JSON.parse(r.technical_ratings) : r.technical_ratings
+      technical_ratings: typeof r.technical_ratings === 'string' ? JSON.parse(r.technical_ratings) : r.technical_ratings,
+      photos: r.photos ? JSON.parse(r.photos) : [],
     })));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// FEED AMIS
+// FEED AMIS (public + friends des amis)
 app.get('/experiences/friends/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
     const { rows } = await pool.query(`
-      SELECT e.*, u.pseudo FROM experiences e
+      SELECT e.*, u.pseudo, u.avatar_url FROM experiences e
       LEFT JOIN users u ON e.user_id = u.id
       WHERE e.user_id IN (
         SELECT CASE WHEN requester_id = $1 THEN receiver_id ELSE requester_id END
         FROM friendships
         WHERE (requester_id = $1 OR receiver_id = $1) AND status = 'accepted'
       )
+      AND e.visibility IN ('public', 'friends')
       ORDER BY e.id DESC
     `, [userId]);
     res.json(rows.map(r => ({
       ...r,
-      technical_ratings: typeof r.technical_ratings === 'string'
-        ? JSON.parse(r.technical_ratings) : r.technical_ratings
+      technical_ratings: typeof r.technical_ratings === 'string' ? JSON.parse(r.technical_ratings) : r.technical_ratings,
+      photos: r.photos ? JSON.parse(r.photos) : [],
     })));
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -136,11 +146,11 @@ app.get('/experiences/friends/:userId', async (req, res) => {
 
 // PUBLIER
 app.post('/experience', async (req, res) => {
-  const { user_id, category, title, universal_score, technical_ratings } = req.body;
+  const { user_id, category, title, universal_score, technical_ratings, photos, visibility } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO experiences (user_id, category, title, universal_score, technical_ratings) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [user_id, category, title, universal_score, JSON.stringify(technical_ratings)]
+      'INSERT INTO experiences (user_id, category, title, universal_score, technical_ratings, photos, visibility) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+      [user_id, category, title, universal_score, JSON.stringify(technical_ratings), JSON.stringify(photos || []), visibility || 'public']
     );
     res.json({ id: result.rows[0].id });
   } catch (e) {
@@ -193,16 +203,47 @@ app.get('/user/:id/profile', async (req, res) => {
 
 // EXPÉRIENCES D'UN UTILISATEUR
 app.get('/user/:id/experiences', async (req, res) => {
+  const { viewer_id } = req.query;
+  const isSelf = viewer_id && parseInt(viewer_id) === parseInt(req.params.id);
   try {
-    const { rows } = await pool.query(
-      'SELECT * FROM experiences WHERE user_id = $1 ORDER BY id DESC',
-      [req.params.id]
-    );
+    let query, params;
+    if (isSelf) {
+      // Toutes ses notes
+      query = 'SELECT * FROM experiences WHERE user_id = $1 ORDER BY id DESC';
+      params = [req.params.id];
+    } else {
+      // Vérifier si viewer est ami
+      const fRes = viewer_id ? await pool.query(
+        `SELECT * FROM friendships WHERE ((requester_id=$1 AND receiver_id=$2) OR (requester_id=$2 AND receiver_id=$1)) AND status='accepted'`,
+        [viewer_id, req.params.id]
+      ) : { rows: [] };
+      const isFriend = fRes.rows.length > 0;
+      const visibilities = isFriend ? "('public','friends')" : "('public')";
+      query = `SELECT * FROM experiences WHERE user_id = $1 AND visibility IN ${visibilities} ORDER BY id DESC`;
+      params = [req.params.id];
+    }
+    const { rows } = await pool.query(query, params);
     res.json(rows.map(r => ({
       ...r,
-      technical_ratings: typeof r.technical_ratings === 'string'
-        ? JSON.parse(r.technical_ratings) : r.technical_ratings
+      technical_ratings: typeof r.technical_ratings === 'string' ? JSON.parse(r.technical_ratings) : r.technical_ratings,
+      photos: r.photos ? JSON.parse(r.photos) : [],
     })));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// CHANGER VISIBILITÉ D'UNE NOTE
+app.put('/experience/:id/visibility', async (req, res) => {
+  const { visibility, user_id } = req.body;
+  if (!['public','friends','private'].includes(visibility))
+    return res.status(400).json({ error: 'Visibilité invalide' });
+  try {
+    await pool.query(
+      'UPDATE experiences SET visibility = $1 WHERE id = $2 AND user_id = $3',
+      [visibility, req.params.id, user_id]
+    );
+    res.json({ message: 'Visibilité mise à jour' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

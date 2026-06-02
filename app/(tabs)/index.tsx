@@ -56,6 +56,8 @@ export default function HomeScreen() {
   const [universalScore, setUniversalScore] = useState(0);
   const [technicalScores, setTechnicalScores] = useState<Record<string,number>>({});
   const [showAllCats, setShowAllCats]   = useState(false);
+  const [postPhotos, setPostPhotos]     = useState<string[]>([]);
+  const [postVisibility, setPostVisibility] = useState<'public'|'friends'|'private'>('public');
 
   // Feed
   const [feed, setFeed]                 = useState<any[]>([]);
@@ -211,12 +213,44 @@ export default function HomeScreen() {
     try {
       const [profRes, expRes] = await Promise.all([
         fetch(`${API_URL}/user/${userId}/profile?viewer_id=${currentUser.id}`),
-        fetch(`${API_URL}/user/${userId}/experiences`),
+        fetch(`${API_URL}/user/${userId}/experiences?viewer_id=${currentUser.id}`),
       ]);
       setViewedUser(await profRes.json());
       setViewedUserExps(await expRes.json());
       setView('userProfile');
     } catch {}
+  };
+
+  // ── Photos du post ──
+  const handleAddPostPhoto = async () => {
+    if (postPhotos.length >= 4) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Permission refusée', 'Autorise l\'accès à ta galerie.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.5,
+      base64: true,
+      allowsMultipleSelection: true,
+      selectionLimit: 4 - postPhotos.length,
+    });
+    if (result.canceled) return;
+    const newPhotos = result.assets
+      .filter(a => a.base64)
+      .map(a => `data:image/jpeg;base64,${a.base64}`);
+    setPostPhotos(prev => [...prev, ...newPhotos].slice(0, 4));
+  };
+
+  const handleChangeVisibility = async (expId: number, newVis: 'public'|'friends'|'private') => {
+    try {
+      await fetch(`${API_URL}/experience/${expId}/visibility`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: newVis, user_id: currentUser.id }),
+      });
+      // Mettre à jour localement
+      setFeed(prev => prev.map(e => e.id === expId ? { ...e, visibility: newVis } : e));
+    } catch { Alert.alert('Erreur', 'Impossible de changer la visibilité.'); }
   };
 
   // ── Publication ──
@@ -232,10 +266,12 @@ export default function HomeScreen() {
         body: JSON.stringify({
           user_id: currentUser.id, category, title,
           universal_score: universalScore, technical_ratings: technicalScores,
+          photos: postPhotos, visibility: postVisibility,
         }),
       });
       if (res.ok) {
         setTitle(''); setUniversalScore(0); setTechnicalScores({});
+        setPostPhotos([]); setPostVisibility('public');
         fetchExperiences();
         fetchTopCats(currentUser.id);
       }
@@ -295,6 +331,39 @@ export default function HomeScreen() {
             </View>
           ))}
         </View>
+        {/* Photos */}
+        {item.photos && item.photos.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+            {item.photos.map((uri: string, i: number) => (
+              <Image key={i} source={{ uri }} style={styles.cardPhoto} />
+            ))}
+          </ScrollView>
+        )}
+        {/* Visibilité — switch pour ses propres notes */}
+        {showDelete && item.user_id === currentUser?.id && (
+          <View style={styles.visibilityBar}>
+            {(['public','friends','private'] as const).map(v => (
+              <TouchableOpacity
+                key={v}
+                style={[styles.visSmallBtn, item.visibility === v && styles.visSmallBtnActive]}
+                onPress={() => handleChangeVisibility(item.id, v)}
+              >
+                <Text style={[styles.visSmallTxt, item.visibility === v && styles.visSmallTxtActive]}>
+                  {v === 'public' ? '🌍' : v === 'friends' ? '👥' : '🔒'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <Text style={styles.visLabel}>
+              {item.visibility === 'public' ? 'Public' : item.visibility === 'friends' ? 'Amis' : 'Privé'}
+            </Text>
+          </View>
+        )}
+        {/* Badge visibilité (lecture seule) pour les autres */}
+        {(!showDelete || item.user_id !== currentUser?.id) && item.visibility && item.visibility !== 'public' && (
+          <Text style={styles.visBadge}>
+            {item.visibility === 'friends' ? '👥 Amis' : '🔒 Privé'}
+          </Text>
+        )}
       </TouchableOpacity>
     );
   };
@@ -376,6 +445,39 @@ export default function HomeScreen() {
           </View>
         </View>
       ))}
+
+      {/* Photos */}
+      <View style={styles.photoRow}>
+        {postPhotos.map((uri, i) => (
+          <View key={i} style={styles.photoThumbWrap}>
+            <Image source={{ uri }} style={styles.photoThumb} />
+            <TouchableOpacity style={styles.photoRemove} onPress={() => setPostPhotos(p => p.filter((_, j) => j !== i))}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+        {postPhotos.length < 4 && (
+          <TouchableOpacity style={styles.photoAddBtn} onPress={handleAddPostPhoto}>
+            <Text style={styles.photoAddIcon}>📷</Text>
+            <Text style={styles.photoAddTxt}>{postPhotos.length === 0 ? 'Photos' : '+'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Visibilité */}
+      <View style={styles.visibilityRow}>
+        {(['public','friends','private'] as const).map(v => (
+          <TouchableOpacity
+            key={v}
+            style={[styles.visBtn, postVisibility === v && styles.visBtnActive]}
+            onPress={() => setPostVisibility(v)}
+          >
+            <Text style={[styles.visBtnTxt, postVisibility === v && styles.visBtnTxtActive]}>
+              {v === 'public' ? '🌍 Public' : v === 'friends' ? '👥 Amis' : '🔒 Privé'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <TouchableOpacity style={styles.postBtn} onPress={handleSubmit}>
         <Text style={styles.postBtnText}>Publier la note</Text>
@@ -703,6 +805,42 @@ const styles = StyleSheet.create({
   techText: { fontSize: 11, color: '#555' },
   deleteBtn: { padding: 6, backgroundColor: '#FFE5E5', borderRadius: 8 },
   deleteBtnText: { color: '#FF3B30', fontWeight: 'bold', fontSize: 13 },
+
+  // Photos dans le formulaire
+  photoRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+  photoThumbWrap: { position: 'relative' },
+  photoThumb: { width: 64, height: 64, borderRadius: 10 },
+  photoRemove: {
+    position: 'absolute', top: -6, right: -6,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
+  },
+  photoAddBtn: {
+    width: 64, height: 64, borderRadius: 10,
+    backgroundColor: '#f0f0f5', borderWidth: 1.5, borderColor: '#ddd', borderStyle: 'dashed',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  photoAddIcon: { fontSize: 20 },
+  photoAddTxt: { fontSize: 10, color: '#aaa', fontWeight: '700', marginTop: 2 },
+
+  // Visibilité dans le formulaire
+  visibilityRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  visBtn: { flex: 1, paddingVertical: 8, borderRadius: 12, backgroundColor: '#f0f0f5', alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  visBtnActive: { backgroundColor: '#EBF5FF', borderColor: '#007AFF' },
+  visBtnTxt: { fontSize: 12, fontWeight: '700', color: '#888' },
+  visBtnTxtActive: { color: '#007AFF' },
+
+  // Photos dans les cartes
+  cardPhoto: { width: 120, height: 90, borderRadius: 10, marginRight: 8 },
+
+  // Barre visibilité sur ses propres notes
+  visibilityBar: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 6 },
+  visSmallBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#f0f0f5', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  visSmallBtnActive: { backgroundColor: '#EBF5FF', borderColor: '#007AFF' },
+  visSmallTxt: { fontSize: 14 },
+  visSmallTxtActive: { fontSize: 14 },
+  visLabel: { fontSize: 12, color: '#888', fontWeight: '600', marginLeft: 4 },
+  visBadge: { fontSize: 12, color: '#888', marginTop: 8, fontWeight: '600' },
 
   // Profil personnel
   profileContainer: { flex: 1 },
