@@ -314,12 +314,15 @@ export default function HomeScreen() {
       ? JSON.parse(item.technical_ratings)
       : (item.technical_ratings || {});
 
+    const isOwn = item.user_id === currentUser?.id;
+    const CardWrapper = isOwn ? View : TouchableOpacity;
+    const wrapperProps = isOwn ? {} : { onPress: () => openUserProfile(item.user_id), activeOpacity: 0.7 };
+
     return (
-      <TouchableOpacity
+      <CardWrapper
         key={item.id}
         style={styles.card}
-        onPress={() => item.user_id !== currentUser.id && openUserProfile(item.user_id)}
-        activeOpacity={item.user_id !== currentUser.id ? 0.7 : 1}
+        {...wrapperProps}
       >
         <View style={styles.cardHeader}>
           <View>
@@ -380,7 +383,7 @@ export default function HomeScreen() {
             {item.visibility === 'friends' ? '👥 Amis' : '🔒 Privé'}
           </Text>
         )}
-      </TouchableOpacity>
+      </CardWrapper>
     );
   };
 
