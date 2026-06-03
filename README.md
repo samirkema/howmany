@@ -1,50 +1,98 @@
-# Welcome to your Expo app 👋
+# How Many — Experiences
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Application mobile et web pour noter et partager tes expériences (films, restos, voyages, musique…) avec tes amis.
 
-## Get started
+---
 
-1. Install dependencies
+## Fonctionnalités
 
-   ```bash
-   npm install
-   ```
+- **Connexion / Inscription** — pseudo + mot de passe (hashé avec bcrypt)
+- **Publier une note** — catégorie, titre, note globale ⭐ + critères techniques
+- **Photos** — jusqu'à 4 photos par note
+- **Visibilité** — 🌍 Public / 👥 Amis / 🔒 Privé, modifiable à tout moment
+- **Feed global** — toutes les notes publiques
+- **Feed amis** — notes publiques + "amis" de tes amis
+- **Profil** — photo de profil modifiable, journal de bord complet (public + amis + privé)
+- **Amis** — envoyer / accepter / retirer des demandes d'ami
+- **Profil public** — voir les expériences d'un autre utilisateur
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## Stack technique
 
-In the output, you'll find options to open the app in a
+| Couche | Techno |
+|---|---|
+| App | React Native (Expo) + TypeScript |
+| Web | React Native Web / Vercel |
+| Serveur | Node.js + Express |
+| Base de données | PostgreSQL (Supabase) |
+| Images | expo-image-picker |
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Structure du projet
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+how-many-app/
+├── app/
+│   └── (tabs)/
+│       └── index.tsx      # Écran principal (toute l'app)
+├── serveur/
+│   └── server.js          # API REST Express
+├── assets/
+│   └── images/
+└── constants/
+    └── theme.ts
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## Lancer le projet en local
 
-To learn more about developing your project with Expo, look at the following resources:
+### Prérequis
+- Node.js 18+
+- Expo CLI (`npm install -g expo-cli`)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### App
+```bash
+npm install
+npx expo start
+```
 
-## Join the community
+### Serveur
+```bash
+cd serveur
+npm install
+# Créer un fichier .env avec :
+# DB_PASSWORD=ton_mot_de_passe_supabase
+node server.js
+```
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## API — Endpoints principaux
+
+| Méthode | Route | Description |
+|---|---|---|
+| POST | `/login` | Connexion ou inscription |
+| GET | `/experiences` | Feed global (public) |
+| GET | `/experiences/friends/:userId` | Feed amis |
+| POST | `/experience` | Publier une note |
+| DELETE | `/experience/:id` | Supprimer une note |
+| PUT | `/experience/:id/visibility` | Changer la visibilité |
+| GET | `/user/:id/profile` | Profil public |
+| GET | `/user/:id/experiences` | Expériences d'un utilisateur |
+| PUT | `/user/:id/avatar` | Mettre à jour la photo de profil |
+| POST | `/friendship/request` | Envoyer une demande d'ami |
+| PUT | `/friendship/accept` | Accepter une demande |
+| DELETE | `/friendship` | Retirer un ami |
+| GET | `/user/:id/friends` | Liste d'amis |
+| GET | `/user/:id/friend-requests` | Demandes reçues |
+
+---
+
+## Déploiement
+
+- **App web** → [Vercel](https://vercel.com) (déploiement automatique depuis GitHub)
+- **Serveur** → [Render](https://render.com)
+- **Base de données** → [Supabase](https://supabase.com)
