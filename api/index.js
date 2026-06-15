@@ -1,7 +1,8 @@
-const express = require('express');
 const innerApp = require('../serveur/server');
 
-const app = express();
-app.use('/', innerApp);
-
-module.exports = app;
+module.exports = (req, res) => {
+  if (req.url.startsWith('/api')) {
+    req.url = req.url.slice(4) || '/';
+  }
+  innerApp(req, res);
+};
