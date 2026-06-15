@@ -1,5 +1,8 @@
 {
   "buildCommand": "npm install && npx expo export --platform web",
   "outputDirectory": "dist",
-  "framework": null
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.js" }
+  ]
 }

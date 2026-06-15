@@ -39,7 +39,7 @@ const ALL_CATEGORIES = Object.keys(CRITERIA);
 
 // ─── COMPOSANT PRINCIPAL ───────────────────────────────────────────────────
 export default function HomeScreen() {
-  const API_URL = 'https://howmany.onrender.com';
+  const API_URL = 'https://howmany-three.vercel.app/api';
 
   // Auth
   const [currentUser, setCurrentUser] = useState<any>(null);

@@ -355,4 +355,7 @@ app.get('/user/:id/top-categories', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Serveur prêt sur port ${PORT}`));
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`🚀 Serveur prêt sur port ${PORT}`));
+}
+module.exports = app;
