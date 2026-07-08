@@ -5,6 +5,7 @@ import {
   ImageBackground, StatusBar, ScrollView, Modal, Image
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 // ─── CATÉGORIES (issues du fichier HOW MANY CATÉGORIES.xlsx) ───────────────
 const CRITERIA: Record<string, string[]> = {
@@ -204,16 +205,21 @@ export default function HomeScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
-      base64: true,
     });
-    if (result.canceled || !result.assets[0].base64) return;
-    const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+    if (result.canceled) return;
+    const resized = await ImageManipulator.manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: 400 } }],
+      { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    const base64 = `data:image/jpeg;base64,${resized.base64}`;
     try {
-      await fetch(`${API_URL}/user/${currentUser.id}/avatar`, {
+      const res = await fetch(`${API_URL}/user/${currentUser.id}/avatar`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ avatar_url: base64 }),
       });
+      if (!res.ok) { Alert.alert('Erreur', 'Impossible de mettre à jour la photo.'); return; }
       setCurrentUser((u: any) => ({ ...u, avatar_url: base64 }));
     } catch {
       Alert.alert('Erreur', 'Impossible de mettre à jour la photo.');
@@ -242,14 +248,20 @@ export default function HomeScreen() {
       mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.5,
-      base64: true,
       allowsMultipleSelection: true,
       selectionLimit: 4 - postPhotos.length,
     });
     if (result.canceled) return;
-    const newPhotos = result.assets
-      .filter(a => a.base64)
-      .map(a => `data:image/jpeg;base64,${a.base64}`);
+    const newPhotos = await Promise.all(
+      result.assets.map(async a => {
+        const resized = await ImageManipulator.manipulateAsync(
+          a.uri,
+          [{ resize: { width: 1080 } }],
+          { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        );
+        return `data:image/jpeg;base64,${resized.base64}`;
+      })
+    );
     setPostPhotos(prev => [...prev, ...newPhotos].slice(0, 4));
   };
 
@@ -288,8 +300,10 @@ export default function HomeScreen() {
         fetchExperiences();
         fetchMyExps(currentUser.id);
         fetchTopCats(currentUser.id);
+      } else {
+        Alert.alert('Erreur', 'Impossible de publier. Réessaie avec moins de photos ou des photos plus légères.');
       }
-    } catch { Alert.alert('Erreur', 'Impossible de publier.'); }
+    } catch { Alert.alert('Erreur', 'Impossible de joindre le serveur.'); }
   };
 
   const handleDelete = (id: number) => setDeleteConfirm(id);
